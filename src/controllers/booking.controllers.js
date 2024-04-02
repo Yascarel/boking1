@@ -1,51 +1,49 @@
 const catchError = require('../utils/catchError');
+const Booking = require('../models/Booking');
+const User = require('../models/User');
 const Hotel = require('../models/Hotel');
-const City = require('../models/City');
 const Image = require('../models/Image');
-const { Op } = require('sequelize');
-
-
-
+const City = require('../models/City');
 
 const getAll = catchError(async(req, res) => {
-    const { cityId, name } = req.query;
-    const where = { }
-
-    if (cityId) where.cityId = cityId;
-    if (name) where.name ={
-        [Op.iLike]: `%${name}%`
-    };
-
-    const results = await Hotel.findAll({
-        include: [ City, Image ], 
-        where
-}
-);
+    const userId = req.user.id
+    const results = await Booking.findAll({include: [{
+        model: User,
+        attributes: {exclude:['password']}
+    }, {
+        model: Hotel,
+        include: [Image, City]
+    }],
+    where: {
+        userId: userId
+    }
+});
     return res.json(results);
 });
 
 const create = catchError(async(req, res) => {
-    const result = await Hotel.create(req.body);
+    const {checkIn, checkOut, hotelId} = req.body
+    const userId = req.user.id
+    const result = await Booking.create({checkIn, checkOut, hotelId, userId});
     return res.status(201).json(result);
 });
 
 const getOne = catchError(async(req, res) => {
     const { id } = req.params;
-    const result = await Hotel.findByPk(id, {
-        include: [ City, Image ]});
+    const result = await Booking.findByPk(id, {include: [Hotel]});
     if(!result) return res.sendStatus(404);
     return res.json(result);
 });
 
 const remove = catchError(async(req, res) => {
     const { id } = req.params;
-    await Hotel.destroy({ where: {id} });
+    await Booking.destroy({ where: {id} });
     return res.sendStatus(204);
 });
 
 const update = catchError(async(req, res) => {
     const { id } = req.params;
-    const result = await Hotel.update(
+    const result = await Booking.update(
         req.body,
         { where: {id}, returning: true }
     );
